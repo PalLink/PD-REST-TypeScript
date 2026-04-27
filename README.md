@@ -1,12 +1,16 @@
-# paldefender-client (TypeScript)
+# PalDefender Rest Client (TypeScript)
 
 Installable TypeScript client for the PalDefender REST API. This package covers every route currently registered in the PalDefender reference implementation, providing a type-safe, cross-platform interface.
 
 ## Install
 
 ```bash
-npm install paldefender-client
+npm install paldefender-rest-client
 ```
+
+## IMPORTANT NOTE
+
+This repo will be updated after PalDefender (Beta) is released unless otherwise stated.
 
 ## Quick Start
 
