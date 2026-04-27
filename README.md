@@ -110,10 +110,11 @@ await client.givePalEggs("steam_76561198000000000",
 ## Configuration
 | Option | Default | Description |
 | :--- | :--- | :--- |
-| `token` | `process.env.PAL_TOKEN` | Your PalDefender AdminPassword. |
+| `token` | `process.env.PD_TOKEN` | Your PalDefender AdminPassword. |
 | `host` | `127.0.0.1` | Server IP or Domain. |
 | `port` | `8212` | REST API Port (default is 8212). |
 | `timeout` | `30000` | Request timeout in milliseconds. |
+| `displayAddress` | `None` | Name of application requesting the api. |
 
 ## Error Handling
 If the API returns a non-200 status code, a `PalDefenderApiError` is thrown.
