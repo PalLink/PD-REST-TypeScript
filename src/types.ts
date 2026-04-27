@@ -2,13 +2,15 @@
  * Configuration for the PalDefender Client
  */
 export interface PalDefenderConfig {
-    host?: string; // [cite: 116, 117]
-    port?: number; // [cite: 116, 117]
-    token?: string; // Marked as optional to support zero-config initialization [cite: 1280]
+    host?: string;
+    port?: number;
+    token?: string;
+    timeout?: number;
+    displayAddress?: string;
 }
 
 /**
- * PalDefender Version Information [cite: 49, 772]
+ * PalDefender Version Information
  */
 export interface PalVersion {
     major: number;
@@ -21,7 +23,16 @@ export interface PalVersion {
 }
 
 /**
- * Player Data Structure [cite: 53, 776]
+ * Basic Position Structure
+ */
+export interface PalPosition {
+    X: number | null;
+    Y: number | null;
+    Z: number | null;
+}
+
+/**
+ * Player Data Structure
  */
 export interface PalPlayer {
     Name: string;
@@ -30,21 +41,21 @@ export interface PalPlayer {
     UserId: string;
     GuildName: string;
     GuildUUID: string;
-    WorldLocation: string;
-    MapLocation: string;
+    WorldLocation: PalPosition | string;
+    MapLocation: PalPosition | string;
 }
 
 /**
- * Guild and Camp Structures [cite: 50, 51, 52, 773, 774]
+ * Guild and Camp Structures
  */
 export interface PalCamp {
     id: string;
-    world_pos: string;
-    map_pos: string;
+    world_pos: PalPosition | string;
+    map_pos: PalPosition | string;
     level?: number;
     state?: string;
-    pals?: any[];
-    buildings?: any[];
+    pals?: Record<string, unknown>[];
+    buildings?: Record<string, unknown>[];
 }
 
 export interface PalGuild {
@@ -52,25 +63,49 @@ export interface PalGuild {
     Level: number;
     admin: string;
     member_count: number;
-    members: any[];
+    members: string[];
     camp_count: number;
     camps: PalCamp[];
-    items?: Record<string, any>;
-    expeditions?: any[];
-    laboratory?: any;
+    items?: PalGuildStorage[];
+    expeditions?: unknown;
+    laboratory?: unknown;
+}
+
+export interface PalGuildStorage {
+    container_id: string | null;
+    current: number | null;
+    max: number | null;
+    slots: Record<string, Record<string, unknown>>;
 }
 
 /**
- * Detailed pal data for team, box, and base camp sections. [cite: 778, 1442]
+ * Detailed pal instance data.
+ */
+export interface PalInstanceData {
+    instance_id: string;
+    attributes: Record<string, unknown>;
+}
+
+/**
+ * Detailed pal data for team, box, and base camp sections.
  */
 export interface PalPlayerPals {
-    team: Record<string, any>;
-    palbox: Record<string, any>;
-    base_camps: Record<string, any>;
+    team?: Record<string, PalInstanceData>;
+    palbox?: Record<string, PalInstanceData>;
+    base_camps?: PalBaseCampData[];
+}
+
+export interface PalBaseCampData {
+    id: string;
+    level: number | null;
+    world_pos: PalPosition;
+    map_pos: PalPosition;
+    state: string | null;
+    pals: Record<string, PalInstanceData>;
 }
 
 /**
- * Inventory and Item Structures [cite: 58, 780, 781]
+ * Inventory and Item Structures
  */
 export interface PalItemSlot {
     ItemID: string;
@@ -90,16 +125,16 @@ export interface PalInventorySection {
  * Maps the six specific sections returned by the server. 
  */
 export interface PalPlayerItems {
-    Items: PalInventorySection;
-    KeyItems: PalInventorySection;
-    Weapons: PalInventorySection;
-    Armor: PalInventorySection;
-    Food: PalInventorySection;
-    DropSlot: PalInventorySection;
+    Items?: PalInventorySection;
+    KeyItems?: PalInventorySection;
+    Weapons?: PalInventorySection;
+    Armor?: PalInventorySection;
+    Food?: PalInventorySection;
+    DropSlot?: PalInventorySection;
 }
 
 /**
- * Progression and Tech Structures [cite: 58, 59, 781]
+ * Progression and Tech Structures
  */
 export interface PalPlayerTechs {
     UnlockedCount: number;
@@ -108,15 +143,56 @@ export interface PalPlayerTechs {
     Unlocked: string[];
 }
 
+export interface PalProgressionPlayer {
+    level: number | null;
+    exp: number | null;
+    unusedStatusPoints: number | null;
+}
+
+export interface PalProgressionCurrencies {
+    lifmunks: number | null;
+    technologyPoints: number | null;
+    ancientTechnologyPoints: number | null;
+}
+
+export interface PalProgressionBosses {
+    towerBossDefeatCounts: Record<string, number>;
+    normalBossDefeatFlags: Record<string, boolean>;
+    raidBossDefeatCounts: Record<string, number>;
+    totalBossDefeatCount: number | null;
+    predatorDefeatCount: number | null;
+}
+
+export interface PalProgressionCaptures {
+    tribeCaptureCount: number | null;
+    palCaptureCounts: Record<string, number>;
+    palCaptureBonusCounts: Record<string, number>;
+    palButcherCounts: Record<string, number>;
+}
+
+export interface PalProgressionActivities {
+    craftItemCounts: Record<string, number>;
+    normalDungeonClearCount: number | null;
+    fixedDungeonClearCount: number | null;
+    oilrigClearCount: number | null;
+    palRankUpCounts: Record<string, number>;
+    arenaSoloClearCounts: Record<string, number>;
+    npcTalkCounts: Record<string, number>;
+    fishingCounts: Record<string, number>;
+    foundTreasureCount: number | null;
+    campConqueredCount: number | null;
+    firstFishingComplete: boolean | null;
+}
+
 /**
- * Comprehensive player progression including legacy parity fields. [cite: 782, 1445]
+ * Comprehensive player progression including legacy parity fields.
  */
 export interface PalPlayerProgression {
-    playerProgression: any;
-    currencies: any;
-    bosses: any;
-    captures: any;
-    activities: any;
+    playerProgression: PalProgressionPlayer;
+    currencies: PalProgressionCurrencies;
+    bosses: PalProgressionBosses;
+    captures: PalProgressionCaptures;
+    activities: PalProgressionActivities;
     Level: number;
     EXP: number;
     UnusedStatusPoints: number;
@@ -126,7 +202,7 @@ export interface PalPlayerProgression {
 }
 
 /**
- * POST Request Payloads [cite: 59, 62, 68, 72, 782, 791, 795]
+ * POST Request Payloads
  */
 export interface GiveItemRequest {
     ItemID: string;
@@ -169,7 +245,7 @@ export interface GiveProgressionRequest {
 }
 
 /**
- * API Response Shapes for structured error and success checking. [cite: 62, 74, 77, 79, 797, 800, 802, 1438, 1446]
+ * API Response Shapes for structured error and success checking.
  */
 export interface PalActionResult {
     Granted?: {
@@ -192,4 +268,16 @@ export interface TechActionResult {
     ForgottenCount?: number;
     Forgotten?: string[];
     Skipped?: string[];
+}
+
+export interface GivePalInternal {
+    PalID: string;
+    Level: number;
+}
+
+export interface GivePalEggInternal {
+    EggID: string;
+    PalID?: string;
+    PalTemplate?: string;
+    Level?: number;
 }

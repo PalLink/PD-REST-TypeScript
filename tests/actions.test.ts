@@ -6,7 +6,7 @@ describe('Action (POST) Endpoints', () => {
     it('should correctly serialize item payloads using helper classes', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
         
-        await client.giveItems("player-1", [new GiveItem("Stone", 50)]);
+        await client.giveItems("player-1", new GiveItem("Stone", 50));
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             method: 'POST',
@@ -18,9 +18,7 @@ describe('Action (POST) Endpoints', () => {
     it('should correctly serialize complex egg payloads', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
-        await client.givePalEggs("player-1", [
-            new GivePalEgg("PalEgg_Dark", undefined, "shadowfox", 15)
-        ]);
+        await client.givePalEggs("player-1", new GivePalEgg("PalEgg_Dark", undefined, "shadowfox", 15));
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             data: { 

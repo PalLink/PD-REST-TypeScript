@@ -1,5 +1,5 @@
 tests/
 node_modules/
-dist/
+src/
 package-lock.json
 vitest.config.ts

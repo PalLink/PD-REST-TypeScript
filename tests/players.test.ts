@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { client } from './setup.js';
+import { client, mockedSession } from './setup.js';
 
 describe('PalDefender Player and Guild Endpoints', () => {
     let activePlayerId: string | null = null;
@@ -9,22 +9,22 @@ describe('PalDefender Player and Guild Endpoints', () => {
         const mockPlayers = [{ Name: 'PalAdmin', PlayerUID: '123' }];
 
         // Mock a successful array response
-        vi.spyOn((client as any).session, 'request').mockResolvedValueOnce({
+        mockedSession.request.mockResolvedValueOnce({
             data: mockPlayers
         });
 
-        const players = await client.players();
-        expect(Array.isArray(players)).toBe(true);
-        expect(players[0].Name).toBe('PalAdmin');
-
+        const response = await client.players();
+        expect(Array.isArray(response.players)).toBe(true);
+        expect(response.players[0].Name).toBe('PalAdmin');
     });
 
     it('should fetch a specific player by identifier', async () => {
-        if (!activePlayerId) return;
+        const mockPlayer = { Name: 'PalAdmin', PlayerUID: '123' };
+        mockedSession.request.mockResolvedValueOnce({ data: mockPlayer });
 
-        const player = await client.player(activePlayerId);
+        const player = await client.player('123');
         expect(player).toBeDefined();
-        expect(player.UserId || player.PlayerUID).toBe(activePlayerId);
+        expect(player.PlayerUID).toBe('123');
     });
 
     it('should return 404 for a non-existent player', async () => {
@@ -37,7 +37,7 @@ describe('PalDefender Player and Guild Endpoints', () => {
         };
 
         // Force the mock to reject for this specific call
-        vi.spyOn((client as any).session, 'request').mockRejectedValueOnce(mockError);
+        mockedSession.request.mockRejectedValueOnce(mockError);
 
         await expect(client.player('non_existent_id'))
             .rejects
@@ -45,22 +45,28 @@ describe('PalDefender Player and Guild Endpoints', () => {
     });
 
     it('should fetch all guilds', async () => {
-        const guilds = await client.guilds();
-        expect(typeof guilds).toBe('object');
+        const mockGuilds = {
+            "guild-1": { name: "Test Guild", Level: 10, admin: "admin-1" }
+        };
+        mockedSession.request.mockResolvedValueOnce({ data: mockGuilds });
 
-        const guildIds = Object.keys(guilds);
-        if (guildIds.length > 0 && guildIds[0]) {
-            const firstGuild = guilds[guildIds[0]];
-            expect(firstGuild).toHaveProperty('name');
-            expect(firstGuild).toHaveProperty('member_count');
-        }
+        const response = await client.guilds();
+        expect(typeof response.guilds).toBe('object');
+
+        const guildIds = Object.keys(response.guilds);
+        expect(guildIds.length).toBeGreaterThan(0);
+        const firstGuild = response.guilds[guildIds[0]];
+        expect(firstGuild.name).toBe('Test Guild');
+        expect(firstGuild.Level).toBe(10);
     });
 
     it('should fetch detailed guild info by ID', async () => {
-        if (!activeGuildId) return;
+        const mockGuildDetail = { name: "Test Guild", Level: 10, members: [], camps: [] };
+        mockedSession.request.mockResolvedValueOnce({ data: mockGuildDetail });
 
-        const guild = await client.guild(activeGuildId);
-        expect(guild).toHaveProperty('members');
-        expect(guild).toHaveProperty('camps');
+        const guild = await client.guild('guild-1');
+        expect(guild.name).toBe('Test Guild');
+        expect(Array.isArray(guild.members)).toBe(true);
+        expect(Array.isArray(guild.camps)).toBe(true);
     });
 });
