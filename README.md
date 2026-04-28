@@ -1,9 +1,11 @@
 # PalDefender Rest Client (TypeScript)
 
-[![npm version](https://img.shields.io/badge/npm-v1.0.0-cyan)](https://www.npmjs.com/package/paldefender-rest-client)
-[![license](https://img.shields.io/badge/license-MIT-green)](https://github.com/GlitchApotamus/paldefender-client/blob/main/LICENSE)
+[![npm version](https://img.shields.io/badge/npm-v11.12.1-cyan?style=plastic)](https://www.npmjs.com/package/paldefender-rest-client)
+[![npm version](https://img.shields.io/badge/node-v24.14.1-green?style=plastic)](https://www.npmjs.com/package/paldefender-rest-client)
+[![license](https://img.shields.io/badge/license-MIT-green?style=plastic)](https://github.com/PalLink/PD-REST-TypeScript/blob/main/LICENSE)
+[![PalLink](https://img.shields.io/badge/Pal-Link-blue?style=plastic&label=Pal&labelColor=pink&color=blue)]("https://discord.gg/YUgcMMc6Ch)
 
-An installable, type-safe TypeScript client for the PalDefender REST API. This package provides a high-level interface to manage Palworld servers, including player stats, guild management, and advanced item/pal granting.
+An installable, type-safe TypeScript Wrapper for the PalDefender REST API. This package provides a high-level interface to manage Palworld servers, including player stats, guild management, and advanced item/pal granting.
 
 ## Install
 
@@ -17,7 +19,7 @@ npm install paldefender-rest-client
 import { PalDefenderClient, PalId } from 'paldefender-rest-client';
 
 const client = new PalDefenderClient({
-    token: 'your-admin-password', // or set PAL_TOKEN env var
+    token: 'your-PD-Token', // or set PD_TOKEN env var
     host: '127.0.0.1',
     port: 8212
 });
