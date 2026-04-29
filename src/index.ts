@@ -94,7 +94,7 @@ export class PalDefenderClient {
             if (latestVersion !== localVersion) {
                 console.warn(
                     `\x1b[33m[PalDefender Warning]\x1b[0m A new version is available: ${latestVersion}\n` +
-                    `Current version: ${localVersion}. Run 'npm update paldefender-client' to upgrade.`
+                    `Current version: ${localVersion}. Run 'npm update paldefender-rest-client' to upgrade.`
                 );
             }
         } catch {
