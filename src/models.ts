@@ -243,15 +243,16 @@ export class GuildsResponse {
 export class GuildMember {
     constructor(
         public player_uid: string,
-        public player_name: string | null,
-        public status: string | null
+        public player_name: string,
+        public status: string
     ) {}
 
     static from_dict(data: Record<string, unknown>): GuildMember {
+        const obj = data as Record<string, unknown>;
         return new GuildMember(
-            String(data.player_uid ?? data.PlayerUID ?? ""),
-            (data.player_name as string) ?? (data.Name as string) ?? null,
-            (data.status as string) ?? null
+            String(obj.player_uid ?? obj.PlayerUID ?? ""),
+            String(obj.player_name ?? obj.Name ?? "Unknown Player"),
+            String(obj.status ?? "Offline")
         );
     }
 }
@@ -319,11 +320,11 @@ export class GuildDetail {
             data.Level ?? null,
             data.admin ?? null,
             data.member_count ?? null,
-            ensureArray<unknown>(data.members).map((item) => {
+            ensureArray<GuildMember>(data.members).map((item) => {
                 if (typeof item === 'object' && item !== null) {
-                    return GuildMember.from_dict(item as Record<string, unknown>);
+                    return GuildMember.from_dict({ item } );
                 }
-                return GuildMember.from_dict({ player_uid: String(item) });
+                return GuildMember.from_dict({ player_uid: item });
             }),
             data.camp_count ?? null,
             ensureArray<PalCamp>(data.camps).map((item) => GuildCampDetail.from_dict(item)),
@@ -337,10 +338,10 @@ export class GuildDetail {
 
 export class PlayerInfo {
     constructor(
-        public Name: string | null,
-        public IP: string | null,
-        public PlayerUID: string | null,
-        public UserId: string | null,
+        public Name: string,
+        public IP: string,
+        public PlayerUID: string,
+        public UserId: string,
         public GuildName: string | null,
         public GuildUUID: string | null,
         public WorldLocation: Position,
@@ -350,10 +351,10 @@ export class PlayerInfo {
 
     static from_dict(data: PalPlayer): PlayerInfo {
         return new PlayerInfo(
-            data.Name ?? null,
-            data.IP ?? null,
-            data.PlayerUID ?? null,
-            data.UserId ?? null,
+            data.Name,
+            data.IP,
+            data.PlayerUID,
+            data.UserId,
             data.GuildName ?? null,
             data.GuildUUID ?? null,
             Position.from_value(data.WorldLocation),
