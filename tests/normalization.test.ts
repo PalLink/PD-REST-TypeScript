@@ -12,7 +12,7 @@ describe('Client Input Normalization', () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
         await client.giveItems("player-1",
-            ["Stone", { ItemId: "Stone", Count: 15 }, "Wood", { ItemId: "Wood", Count: 99 }]
+            "Stone", { ItemId: "Stone", Count: 15 }, "Wood", { ItemId: "Wood", Count: 99 }
         );
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -29,7 +29,7 @@ describe('Client Input Normalization', () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
         await client.givePals("player-1",
-            ["Anubis", { PalName: 'Jetragon', Level: 50 }, PalId.Frostallion]
+            "Anubis", { PalName: 'Jetragon', Level: 50 }, PalId.Frostallion
         );
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -46,7 +46,7 @@ describe('Client Input Normalization', () => {
     it('learnTech should handle constants and varargs', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
-        await client.learnTech("player-1", [TechnologyId.MegaSphere, "Arrow"]);
+        await client.learnTech("player-1", TechnologyId.MegaSphere, "Arrow");
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             data: {
@@ -94,12 +94,12 @@ describe('Client Input Normalization', () => {
     it('giveProgression should handle model or options', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
-        await client.giveProgression("player-1", undefined, { exp: 5000 });
+        await client.giveProgression("player-1", { exp: 5000 });
         expect(requestSpy).toHaveBeenLastCalledWith(expect.objectContaining({
             data: { EXP: 5000 }
         }));
 
-        await client.giveProgression("player-1", new GiveProgressionRequest(10));
+        await client.giveProgression("player-1", { exp: 10 });
         expect(requestSpy).toHaveBeenLastCalledWith(expect.objectContaining({
             data: { EXP: 10 }
         }));

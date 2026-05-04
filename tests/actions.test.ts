@@ -6,7 +6,7 @@ describe('Action (POST) Endpoints', () => {
     it('should correctly serialize item payloads using helper classes', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
         
-        await client.giveItems("player-1", [{ ItemId: "Stone", Count: 50}]);
+        await client.giveItems("player-1", { ItemId: "Stone", Count: 50});
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             method: 'POST',
@@ -30,7 +30,7 @@ describe('Action (POST) Endpoints', () => {
     it('should use server-side field names for progression requests', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
-        await client.giveProgression("player-1", new GiveProgressionRequest(1000, undefined, 5));
+        await client.giveProgression("player-1", { exp: 1000, technologyPoints: 5 });
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             data: { EXP: 1000, TechnologyPoints: 5 }
