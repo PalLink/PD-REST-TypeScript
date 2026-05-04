@@ -1,4 +1,5 @@
 export const TechnologyId = {
+  All: "All",
   PrimitiveWorkbench: "Workbench",
   StoneAxe: "Product_Axe_Grade_01",
   StonePickaxe: "Product_Pickaxe_Grade_01",
@@ -506,6 +507,7 @@ export const TechnologyId = {
 export type TechnologyId = (typeof TechnologyId)[keyof typeof TechnologyId];
 
 export const TECHNOLOGY_ID_TO_NAME: Record<TechnologyId, string> = {
+  [TechnologyId.All]: "All",
   [TechnologyId.PrimitiveWorkbench]: "Primitive Workbench",
   [TechnologyId.StoneAxe]: "Stone Axe",
   [TechnologyId.StonePickaxe]: "Stone Pickaxe",
