@@ -3,9 +3,9 @@
 [![npm version](https://img.shields.io/badge/npm-v11.12.1-cyan?style=plastic)](https://www.npmjs.com/package/paldefender-rest-client)
 [![npm version](https://img.shields.io/badge/node-v24.14.1-green?style=plastic)](https://www.npmjs.com/package/paldefender-rest-client)
 [![license](https://img.shields.io/badge/license-MIT-green?style=plastic)](https://github.com/PalLink/PD-REST-TypeScript/blob/main/LICENSE)
-[![PalLink](https://img.shields.io/badge/Pal-Link-blue?style=plastic&label=Pal&labelColor=pink&color=blue)]("https://discord.gg/YUgcMMc6Ch)
+[![PalLink](https://img.shields.io/badge/Pal-Link-blue?style=plastic&label=Pal&labelColor=pink&color=blue)](https://discord.gg/YUgcMMc6Ch)
 
-An installable, type-safe TypeScript Wrapper for the PalDefender REST API. This package provides a high-level interface to manage Palworld servers, including player stats, guild management, and advanced item/pal granting.
+An installable, type-safe TypeScript Wrapper for the PalDefender REST API. This package provides a high-level interface to manage Palworld servers with a focus on developer experience and intuitive "Smart Input" granting.
 
 ## Install
 
@@ -19,18 +19,22 @@ npm install paldefender-rest-client
 import { PalDefenderClient, PalId } from 'paldefender-rest-client';
 
 const client = new PalDefenderClient({
-    token: 'your-PD-Token', // or set PD_TOKEN env var
+    token: 'your-PD-Token', 
     host: '127.0.0.1',
-    port: 8212
+    port: 17993
 });
 
 async function main() {
-    // List all players
+    // List all players (using alias)
     const { players } = await client.players();
     
-    // Grant a Pal using the helper shorthand
-    // Supports both PlayerUID and UserID (Steam/Mac/GDK/PS5)
-    await client.givePals("steam_76561198000000000", [PalId.Anubis, 50]);
+    // Smart Input: Pass multiple items as separate arguments, 
+    // single strings, or arrays. Duplicates are merged automatically!
+    await client.giveItems("steam_76561198000000000", 
+        "Stone", 
+        { ItemId: "Stone", Count: 15 }, 
+        "Wood"
+    );
 }
 ```
 
@@ -38,96 +42,109 @@ async function main() {
 
 ## 🆔 ID Parameter Support
 
-For all functions listed below that accept an `id` parameter (targeting a player), the following formats are supported:
+For all functions targeting a player, the following formats are supported:
 
-* **PlayerUID**: The internal Palworld GUID (e.g., `XXXXXXXX-0000-0000-0000-000000000000`).
-* **UserID**: The platform-specific ID (e.g., `steam_00000000000000000`, `mac_...`, `gdk_...`, or `ps5_...`).
+* **PlayerUID**: The internal Palworld GUID (`XXXXXXXX-0000-0000-0000-000000000000`).
+* **UserID**: The platform-specific ID (`steam_...`, `mac_...`, `gdk_...`, or `ps5_...`).
 
-*Note: Functions targeting **Guilds** or **Bases** require their specific GUIDs and do not support UserIDs.*
+---
+
+## Action Endpoints (Smart Granting)
+All "give" and "tech" methods use a **Uniform Rest Parameter** system. You never have to worry about whether to pass an array or a single value—both work perfectly.
+
+### Items: `giveItems(id, ...items)`
+Automatically aggregates counts for duplicate IDs (e.g., "Stone" + {ItemId: "Stone", Count: 5} = 6 Stone).
+```typescript
+await client.giveItems(id, "Stone"); // Shorthand (Count: 1)
+await client.giveItems(id, ["Stone", "Wood"]); // Single array
+await client.giveItems(id, "Stone", { ItemId: "Wood", Count: 100 }); // Mixed rest params
+```
+
+### Pals: `givePals(id, ...pals)`
+Supports friendly `PalName` keys (e.g., `"Anubis"`) or raw `PalId` values (e.g., `"Alpaca"`).
+```typescript
+import { PalId } from 'paldefender-rest-client';
+
+await client.givePals(id, "Anubis"); // Level 1 shorthand
+await client.givePals(id, PalId.Jetragon, { PalName: "Anubis", Level: 50 }); // Mixed
+```
+
+### Eggs: `givePalEggs(id, ...eggs)`
+Supports Egg IDs, detailed objects, or tuples for quick entry.
+```typescript
+await client.givePalEggs(id, 
+    "Egg_Dark_01",                       // Shorthand
+    ["Egg_Dark_02", "Anubis", 15],       // Tuple: [EggID, Pal, Level]
+    { EggID: "Egg_Fire_01", Level: 50 }  // Detailed Object
+);
+```
+
+### Tech: `learnTech` / `forgetTech`
+Supports keys, raw IDs, and a magic `"All"` toggle that expands to every known technology.
+```typescript
+await client.learnTech(id, "MegaShield");
+await client.learnTech(id, "Altar", "GrapplingGun"); // Multiple args
+await client.learnTech(id, "All"); // Grants every technology
+```
+
+### Progression: `giveProgression(id, options)`
+Cleanly grant experience or points using a standard object.
+```typescript
+await client.giveProgression(id, { 
+    exp: 5000, 
+    technologyPoints: 10,
+    lifmunks: 5 
+});
+```
 
 ---
 
 ## API Reference
 
 ### Info & Players
-| Method | Description |
-| :--- | :--- |
-| `version()` / `getVersion()` | Returns server and anticheat version info. |
-| `players()` / `getPlayers()` | Returns a list of all players currently or previously on the server. |
-| `player(id)` / `getPlayer(id)` | Returns profile data. Supports **PlayerUID** or **UserID**. |
-| `findPlayerByName(name)` | Helper to find a specific player by their exact in-game name. |
-| `findPlayersByPartialName(part)`| Returns an array of players matching a name fragment. |
+| Method | Alias | Description |
+| :--- | :--- | :--- |
+| `getVersion()` | `version()` | Returns server and anticheat version info. |
+| `getPlayers()` | `players()` | Returns a list of all players (online and offline). |
+| `getPlayer(id)` | `player(id)` | Returns profile data (Supports PlayerUID/UserID). |
+| `findPlayerByName(name)` | — | Exact name match helper. |
+| `findPlayersByPartialName(part)`| — | Name fragment search helper. |
 
 ### Guilds & Bases
-| Method | Description |
-| :--- | :--- |
-| `guilds()` / `getGuilds()` | Returns a list of all guilds/groups. |
-| `guild(id)` / `getGuild(id)` | Returns detailed guild info. Requires **Guild GUID**. |
-| `deleteBase(baseId)` | Deletes a base camp by its **Base GUID**. |
+| Method | Alias | Description |
+| :--- | :--- | :--- |
+| `getGuilds()` | `guilds()` | Returns a list of all guilds/groups. |
+| `getGuild(id)` | `guild(id)` | Detailed guild info (Requires Guild GUID). |
+| `deleteBase(baseId)` | — | Deletes a base camp (Requires Base GUID). |
 
-### Player Deep-Dive
-| Method | Description |
-| :--- | :--- |
-| `pals(id)` | Returns all Pals owned by player. Supports **PlayerUID/UserID**. |
-| `items(id)` | Returns player's full inventory. Supports **PlayerUID/UserID**. |
-| `techs(id)` | Returns list of unlocked tech IDs. Supports **PlayerUID/UserID**. |
-| `progression(id)` | Returns stats and boss history. Supports **PlayerUID/UserID**. |
-
----
-
-## Action Endpoints (Granting)
-For a detailed breakdown of every available function and its parameters, see the [Full Usage Guide](./docs/Usage.md).<br><br>
-All "give" methods use a flexible input system and support both **PlayerUID** and **UserID**.
-
-### Items: `giveItems(id, ...items)`
-```typescript
-await client.giveItems("steam_76561198000000000", 
-    "Stone",                  // ID only
-    ["Wood", 100],            // [ID, Count]
-    { ItemID: "Iron", Count: 5 }
-);
-```
-
-### Pals: `givePals(id, ...pals)`
-```typescript
-import { PalId } from 'paldefender-rest-client';
-
-await client.givePals("XXXXXXXX-0000-0000-0000-000000000000", 
-    PalId.Anubis,             // Level 1
-    ["BadCatgirl", 50]        // Level 50
-);
-```
-
-### Eggs: `givePalEggs(id, ...eggs)`
-```typescript
-import { PAL_EGG_IDS } from 'paldefender-rest-client';
-
-await client.givePalEggs("steam_76561198000000000", 
-    [PAL_EGG_IDS.Dark.Huge, "BadCatgirl", 1] // [EggID, PalID, Level]
-);
-```
+### Deep-Dive
+| Method | Alias | Description |
+| :--- | :--- | :--- |
+| `getPals(id)` | `pals(id)` | Returns all Pals owned by player. |
+| `getItems(id)` | `items(id)` | Returns player's full inventory. |
+| `getTechs(id)` | `techs(id)` | Returns list of unlocked tech IDs. |
+| `getProgression(id)` | `progression(id)` | Returns player stats and boss history. |
 
 ---
 
 ## Configuration
 | Option | Default | Description |
 | :--- | :--- | :--- |
-| `token` | `process.env.PD_TOKEN` | Your PalDefender AdminPassword. |
+| `token` | `process.env.PD_TOKEN` | Your PalDefender Admin Token. |
 | `host` | `127.0.0.1` | Server IP or Domain. |
-| `port` | `8212` | REST API Port (default is 8212). |
-| `timeout` | `30000` | Request timeout in milliseconds. |
-| `displayAddress` | `None` | Name of application requesting the api. |
+| `port` | `17993` | REST API Port. |
+| `timeout` | `30000` | Request timeout in ms. |
+| `displayAddress` | `None` | Application name for API logs. |
 
 ## Error Handling
-If the API returns a non-200 status code, a `PalDefenderApiError` is thrown.
+If the API returns a non-200 status, a `PalDefenderApiError` is thrown.
 
 ```typescript
 try {
     await client.giveItems("invalid-id", "Stone");
 } catch (err) {
     if (err instanceof PalDefenderApiError) {
-        console.log(err.statusCode);   // e.g., 404
-        console.log(err.responseBody); // raw error from server
+        console.error(`Status ${err.statusCode}: ${err.message}`);
     }
 }
 ```
