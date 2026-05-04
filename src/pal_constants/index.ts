@@ -33,11 +33,3 @@ export const ENDPOINTS = {
     LEARN_TECH: (id: string) => `/learntech/${id}`,
     FORGET_TECH: (id: string) => `/forgettech/${id}`,
 } as const;
-
-export interface PalDefenderConfig {
-    host?: string;
-    port?: number;
-    token?: string;
-    timeout?: number;
-    displayAddress?: string;
-}
