@@ -46,6 +46,7 @@ For all functions targeting a player, the following formats are supported:
 
 * **PlayerUID**: The internal Palworld GUID (`XXXXXXXX-0000-0000-0000-000000000000`).
 * **UserID**: The platform-specific ID (`steam_...`, `mac_...`, `gdk_...`, or `ps5_...`).
+* NOTE: The mac id seems to be broken right now. Use UID if your player is playing on Mac Device.
 
 ---
 
