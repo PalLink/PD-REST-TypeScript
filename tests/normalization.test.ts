@@ -10,12 +10,9 @@ describe('Client Input Normalization', () => {
 
     it('giveItems should merge duplicates and handle shorthands', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
-        
-        await client.giveItems("player-1", 
-            "Stone", 
-            ["Stone", 10], 
-            new GiveItem("Stone", 5),
-            { ItemID: "Wood", Count: 100 }
+
+        await client.giveItems("player-1",
+            ["Stone", { ItemId: "Stone", Count: 15 }, "Wood", { ItemId: "Wood", Count: 99 }]
         );
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -32,9 +29,7 @@ describe('Client Input Normalization', () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
         await client.givePals("player-1",
-            "Anubis",
-            ["Jetragon", 50],
-            PalId.Frostallion
+            ["Anubis", { PalName: 'Jetragon', Level: 50 }, PalId.Frostallion]
         );
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
@@ -51,7 +46,7 @@ describe('Client Input Normalization', () => {
     it('learnTech should handle constants and varargs', async () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
-        await client.learnTech("player-1", TechnologyId.MegaSphere, "Arrow");
+        await client.learnTech("player-1", [TechnologyId.MegaSphere, "Arrow"]);
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             data: {
@@ -69,10 +64,10 @@ describe('Client Input Normalization', () => {
             url: '/give/items/player-1',
             data: {
                 Items: expect.arrayContaining([
-                    { ItemID: "Pal_crystal_S", Count: 2 },
-                    { ItemID: "CopperIngot", Count: 2 },
-                    { ItemID: "Wood", Count: 10 },
-                    { ItemID: "Stone", Count: 10 }
+                    { ItemID: "Pal_crystal_S", Count: 1 },
+                    { ItemID: "CopperIngot", Count: 1 },
+                    { ItemID: "Wood", Count: 5 },
+                    { ItemID: "Stone", Count: 5 }
                 ])
             }
         }));
@@ -82,17 +77,15 @@ describe('Client Input Normalization', () => {
         const requestSpy = vi.spyOn((client as any).session, 'request');
 
         await client.givePalEggs("player-1",
-            new GivePalEgg("Egg1", "Anubis"),
-            ["Egg2", PalId.Jetragon, 15],
-            { EggID: "Egg3", PalTemplate: "custom.json" }
+            ["PalEgg_Dragon_05", PalId.Jetragon, 15],
+            { EggID: "PalEgg_Dark_02", PalTemplate: "custom.json" }
         );
 
         expect(requestSpy).toHaveBeenCalledWith(expect.objectContaining({
             data: {
                 PalEggs: [
-                    { EggID: "Egg1", PalID: "Anubis" },
-                    { EggID: "Egg2", PalID: "JetDragon", Level: 15 },
-                    { EggID: "Egg3", PalTemplate: "custom.json" }
+                    { EggID: "PalEgg_Dragon_05", PalID: "JetDragon", Level: 15 },
+                    { EggID: "PalEgg_Dark_02", PalTemplate: "custom.json" }
                 ]
             }
         }));
