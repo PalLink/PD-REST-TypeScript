@@ -1,9 +1,6 @@
 import axios, { type AxiosInstance, AxiosError, isAxiosError } from 'axios';
 import { PalDefenderApiError } from './errors.js';
 import {
-    GiveItem,
-    GivePal,
-    GivePalEgg,
     GiveProgressionRequest,
     VersionInfo,
     GuildsResponse,
@@ -36,13 +33,6 @@ import type {
     PalPlayerProgression
 } from './types.js';
 import pkg from '../package.json' with { type: 'json' };
-
-export type JsonValue = Record<string, unknown> | unknown[] | string | number | boolean | null;
-export type ItemInput = string | [string, number] | GiveItem | Record<string, unknown>;
-export type PalInput = string | keyof typeof PalId | [string | keyof typeof PalId, number] | GivePal | Record<string, unknown>;
-export type PalEggTupleInput = [string, string | keyof typeof PalId] | [string, string | keyof typeof PalId, number];
-export type PalEggInput = GivePalEgg | Record<string, unknown> | PalEggTupleInput;
-export type TechnologyInput = string | keyof typeof TechnologyId | (string | keyof typeof TechnologyId)[];
 
 interface Serializable {
     to_dict(): Record<string, unknown>;
@@ -138,14 +128,25 @@ export class PalDefenderClient {
         return value;
     }
 
-    /**
-     * Internal helper to resolve PalNames to internal PalIDs
-     */
     private _resolvePalId(id: string): string {
         if (id in PalId) {
             return PalId[id as PalName];
         }
-        return id; // Fallback for raw IDs or custom templates
+        return id;
+    }
+
+    private _resolveTechnologyId(id: string): string {
+        if (id in TechnologyId) {
+            return TechnologyId[id as keyof typeof TechnologyId];
+        }
+        return id;
+    }
+
+    private _resolveItemId(id: string): string {
+        if (id in ItemId) {
+            return ItemId[id as keyof typeof ItemId];
+        }
+        return id;
     }
 
     private async _request<T>(method: string, endpoint: string, data?: unknown): Promise<T> {
@@ -273,29 +274,104 @@ export class PalDefenderClient {
     async progression(id: string): Promise<PlayerProgressionResponse> { return await this.getProgression(id); }
 
     /** POST Endpoints */
-    async giveItems(id: string, ...items: ItemInput[]): Promise<PalActionResult> {
-        const normalized = this._normalizeItemInputs(items);
-        const payload = { "Items": normalized.map(item => this._serializeEntry(item)) };
+    async giveItems(
+        id: string,
+        items: (keyof typeof ItemId) | ((keyof typeof ItemId) | { ItemId: keyof typeof ItemId; Count: number })[]
+    ): Promise<PalActionResult> {
+        const inputArray = Array.isArray(items) ? items : [items];
+
+        // 1. Resolve and Group
+        const aggregated = inputArray.reduce((acc, item) => {
+            const rawId = typeof item === 'string' ? item : item.ItemId;
+            const count = typeof item === 'string' ? 1 : item.Count;
+
+            // Resolve the ID immediately so duplicates like "Stone" and its internal ID merge
+            const resolvedId = this._resolveItemId(rawId as string) || rawId;
+
+            if (!acc[resolvedId]) {
+                acc[resolvedId] = 0;
+            }
+            acc[resolvedId] += count;
+
+            return acc;
+        }, {} as Record<string, number>);
+
+        // 2. Map to final API Payload
+        const payload = {
+            Items: Object.entries(aggregated).map(([ItemID, Count]) => ({
+                ItemID,
+                Count
+            }))
+        };
+
         return this._request<PalActionResult>('POST', `/give/items/${this._pathPart(id)}`, payload);
     }
 
-    async givePals(id: string, pals: { PalName: PalName; Level: number }[]): Promise<PalActionResult> {
+    async givePals(
+        id: string,
+        pals:
+            | PalName
+            | typeof PalId[keyof typeof PalId] // Allows raw IDs like "Alpaca"
+            | (
+                | PalName
+                | typeof PalId[keyof typeof PalId]
+                | { PalName: PalName | typeof PalId[keyof typeof PalId]; Level: number }
+            )[]
+    ): Promise<PalActionResult> {
+        const inputArray = Array.isArray(pals) ? pals : [pals];
+        const normalized = inputArray.map(pal => {
+            if (typeof pal === 'string') {
+                return { PalName: pal, Level: 1 };
+            }
+            return pal;
+        });
+
         const payload = {
-            Pals: pals.map(({ PalName, ...rest }) => ({
-                ...rest,
-                PalID: this._resolvePalId(PalName)
+            Pals: normalized.map(({ PalName, Level }) => ({
+                PalID: this._resolvePalId(PalName as string),
+                Level: Level
             }))
         };
+
         return this._request('POST', `/give/pals/${this._pathPart(id)}`, payload);
     }
 
-    async givePalEggs(id: string, eggs: { EggID: PalEggId; PalName?: PalName; PalTemplate?: string; Level?: number }[]): Promise<PalActionResult> {
+    async givePalEggs(
+        id: string,
+        ...eggs: (
+            | PalEggId
+            | [PalEggId, PalName | string]
+            | [PalEggId, PalName | string, number]
+            | { EggID: PalEggId; PalName?: PalName | string; PalTemplate?: string; Level?: number }
+        )[]
+    ): Promise<PalActionResult> {
+        // 1. Normalize the varied inputs into a consistent object structure
+        const normalized = eggs.map(egg => {
+            // Handle Tuple: ["Egg2", "Jetragon", 15] or ["Egg2", "Jetragon"]
+            if (Array.isArray(egg)) {
+                const [eggId, palNameOrId, level] = egg;
+                return {
+                    EggID: eggId,
+                    PalName: palNameOrId,
+                    Level: level ?? 1
+                };
+            }
+            // Handle String: "Egg_Dark_01"
+            if (typeof egg === 'string') {
+                return { EggID: egg };
+            }
+            // Handle Object: { EggID: "...", ... }
+            return egg;
+        });
+
+        // 2. Map to API Payload with ID resolution
         const payload = {
-            PalEggs: eggs.map(({ PalName, ...rest }) => ({
+            PalEggs: normalized.map(({ PalName, ...rest }) => ({
                 ...rest,
-                ...(PalName && { PalID: this._resolvePalId(PalName) })
+                ...(PalName && { PalID: this._resolvePalId(PalName as string) })
             }))
         };
+
         return this._request('POST', `/give/paleggs/${this._pathPart(id)}`, payload);
     }
 
@@ -304,12 +380,11 @@ export class PalDefenderClient {
         const prodId = (ItemId as any)[product] || product;
         const materials = getRecipeMaterials(prodId as ItemId);
         if (!materials) throw new Error(`No recipe found for product ${product}`);
-
-        const items: GiveItem[] = [];
+        const items: { ItemId: keyof typeof ItemId, Count: number }[] = [];
         for (const [matId, count] of Object.entries(materials)) {
-            items.push(new GiveItem(matId, (count as number) * quantity));
+            items.push({ ItemId: this._resolveItemId(matId) as keyof typeof ItemId, Count: count as number });
         }
-        return this.giveItems(id, ...items);
+        return this.giveItems(id, items);
     }
 
     async giveProgression(id: string, request?: GiveProgressionRequest | Record<string, unknown>, options?: {
@@ -322,15 +397,27 @@ export class PalDefenderClient {
         return this._request<PalActionResult>('POST', `/give/progression/${this._pathPart(id)}`, this._serializeEntry(payload));
     }
 
-    async learnTech(id: string, ...technology: TechnologyInput[]): Promise<TechActionResult> {
+    async learnTech(
+        id: string,
+        techs: (keyof typeof TechnologyId | string) | (keyof typeof TechnologyId | string)[]
+    ): Promise<TechActionResult> {
+        const techArray = Array.isArray(techs) ? techs : [techs];
+        const processed = this._getProcessedTechs(techArray);
+
         return this._request<TechActionResult>('POST', `/learntech/${this._pathPart(id)}`, {
-            "Technology": this._technologyPayload(technology)
+            "Technology": processed.length === 1 ? processed[0] : processed
         });
     }
 
-    async forgetTech(id: string, ...technology: TechnologyInput[]): Promise<TechActionResult> {
+    async forgetTech(
+        id: string,
+        techs: (keyof typeof TechnologyId | string) | (keyof typeof TechnologyId | string)[]
+    ): Promise<TechActionResult> {
+        const techArray = Array.isArray(techs) ? techs : [techs];
+        const processed = this._getProcessedTechs(techArray);
+
         return this._request<TechActionResult>('POST', `/forgettech/${this._pathPart(id)}`, {
-            "Technology": this._technologyPayload(technology)
+            "Technology": processed.length === 1 ? processed[0] : processed
         });
     }
 
@@ -339,102 +426,6 @@ export class PalDefenderClient {
     }
 
     /** Normalization Helpers */
-    private _normalizeItemInputs(values: ItemInput[]): (GiveItem | Record<string, unknown>)[] {
-        const flattened = this._flattenSingleSequence(values, (v) => Array.isArray(v) && v.length === 2 && typeof v[0] === 'string' && typeof v[1] === 'number');
-        const counts: Record<string, number> = {};
-        const passthrough: Record<string, unknown>[] = [];
-
-        for (const value of flattened) {
-            if (typeof value === 'string') {
-                counts[value] = (counts[value] || 0) + 1;
-            } else if (value instanceof GiveItem) {
-                counts[value.ItemID] = (counts[value.ItemID] || 0) + value.Count;
-            } else if (Array.isArray(value)) {
-                const [itemId, count] = value as [string, number];
-                counts[itemId] = (counts[itemId] || 0) + count;
-            } else if (typeof value === 'object' && value !== null) {
-                const v = value as Record<string, unknown>;
-                if ('ItemID' in v && 'Count' in v) {
-                    counts[v.ItemID as string] = (counts[v.ItemID as string] || 0) + (v.Count as number);
-                } else {
-                    passthrough.push(v);
-                }
-            }
-        }
-
-        const normalized: (GiveItem | Record<string, unknown>)[] = Object.entries(counts).map(([id, count]) => new GiveItem(id, count));
-        normalized.push(...passthrough);
-        if (normalized.length === 0) throw new Error("at least one item must be provided");
-        return normalized;
-    }
-
-    private _normalizePalInputs(values: PalInput[]): (GivePal | Record<string, unknown>)[] {
-        const flattened = this._flattenSingleSequence(values, (v) => Array.isArray(v) && v.length === 2 && typeof v[1] === 'number');
-        const normalized: (GivePal | Record<string, unknown>)[] = [];
-
-        for (const value of flattened) {
-            if (typeof value === 'string') {
-                const palId = (PalId as any)[value] || value;
-                normalized.push(new GivePal(palId as string, 1));
-            } else if (value instanceof GivePal) {
-                normalized.push(value);
-            } else if (Array.isArray(value)) {
-                let [palId, level] = value as [string, number];
-                palId = (PalId as any)[palId] || palId;
-                normalized.push(new GivePal(palId as string, level));
-            } else if (typeof value === 'object' && value !== null) {
-                const v = value as Record<string, unknown>;
-                if ('PalID' in v && 'Level' in v) {
-                    const palId = (PalId as any)[v.PalID as string] || v.PalID;
-                    normalized.push(new GivePal(palId as string, v.Level as number));
-                } else {
-                    normalized.push(v);
-                }
-            }
-        }
-        if (normalized.length === 0) throw new Error("at least one pal must be provided");
-        return normalized;
-    }
-
-    private _normalizePalEggInputs(values: PalEggInput[]): (GivePalEgg | Record<string, unknown>)[] {
-        const flattened = this._flattenSingleSequence(values, (v) => Array.isArray(v) && (v.length === 2 || v.length === 3));
-        const normalized: (GivePalEgg | Record<string, unknown>)[] = [];
-
-        for (const value of flattened) {
-            if (value instanceof GivePalEgg) {
-                normalized.push(value);
-            } else if (Array.isArray(value)) {
-                const [eggId, palOrTemplate, level] = value as [string, string, number?];
-                const palId = (PalId as any)[palOrTemplate];
-                if (palId) {
-                    normalized.push(new GivePalEgg(eggId, palId as string, undefined, level));
-                } else if (typeof palOrTemplate === 'string' && (palOrTemplate.endsWith('.json') || !this._isKnownPalId(palOrTemplate))) {
-                    normalized.push(new GivePalEgg(eggId, undefined, palOrTemplate, level));
-                } else {
-                    normalized.push(new GivePalEgg(eggId, palOrTemplate, undefined, level));
-                }
-            } else if (typeof value === 'object' && value !== null) {
-                const v = value as Record<string, unknown>;
-                if ('EggID' in v) {
-                    const palId = (PalId as any)[v.PalID as string] || v.PalID;
-                    normalized.push(new GivePalEgg(v.EggID as string, palId as string, v.PalTemplate as string, v.Level as number));
-                } else {
-                    normalized.push(v);
-                }
-            }
-        }
-        if (normalized.length === 0) throw new Error("at least one pal egg must be provided");
-        return normalized;
-    }
-
-    private _normalizeStringInputs(values: (string | string[])[], label: string): string[] {
-        if (values.length === 1 && Array.isArray(values[0])) {
-            return values[0];
-        }
-        if (values.length === 0) throw new Error(`at least one ${label.replace(/s$/, '')} must be provided`);
-        return values as string[];
-    }
-
     private _normalizeProgressionRequest(request?: GiveProgressionRequest | Record<string, unknown>, options?: {
         exp?: number,
         lifmunks?: number,
@@ -447,27 +438,16 @@ export class PalDefenderClient {
         return new GiveProgressionRequest(options?.exp, options?.lifmunks, options?.technologyPoints, options?.ancientTechnologyPoints);
     }
 
-    private _isKnownPalId(value: string): boolean {
-        return Object.values(PalId).includes(value as any);
-    }
-
-    private _flattenSingleSequence(values: any[], tuplePredicate: (v: any) => boolean): any[] {
-        if (values.length === 1 && Array.isArray(values[0]) && !tuplePredicate(values[0])) {
-            return values[0];
+    private _getProcessedTechs(techs: (keyof typeof TechnologyId | string)[]): string[] {
+        // 1. Check if "All" is anywhere in the input array (as a key or raw string)
+        if (techs.includes("All" as any) || techs.includes(TechnologyId.All)) {
+            return Object.entries(TechnologyId)
+                .filter(([key]) => key !== "All")
+                .map(([_, value]) => value);
         }
-        return values;
-    }
 
-    private _technologyPayload(technology: TechnologyInput[]): string | string[] {
-        const flattened = this._flattenSingleSequence(technology, () => false);
-        const normalized: string[] = flattened
-            .map(v => (typeof v === 'string' && (TechnologyId as any)[v]) || v)
-            .filter((v): v is string => typeof v === 'string');
-
-        if (normalized.length === 0) throw new Error("at least one technology must be provided");
-        if (normalized.length === 1) return normalized[0]!;
-        if (normalized.includes("All")) throw new Error('"All" is only valid when passed by itself');
-        return normalized;
+        // 2. Resolve specific IDs (maps keys to values, or returns raw string if no key found)
+        return techs.map(t => this._resolveTechnologyId(t as string));
     }
 }
 
