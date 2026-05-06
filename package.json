@@ -1,6 +1,6 @@
 {
   "name": "paldefender-rest-client",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "TypeScript API Wrapper for the PalDefender REST API.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,13 @@
     "README.md",
     "LICENSE"
   ],
-  "keywords": ["paldefender", "palworld", "rest", "api", "client"],
+  "keywords": [
+    "paldefender",
+    "palworld",
+    "rest",
+    "api",
+    "client"
+  ],
   "author": "GlitchApotamus",
   "license": "MIT",
   "type": "module",
