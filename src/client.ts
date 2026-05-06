@@ -33,10 +33,6 @@ import type {
 } from './types.js';
 import pkg from "../package.json" with { type: "json" };
 
-interface Serializable {
-    to_dict(): Record<string, unknown>;
-}
-
 export class PalDefenderClient {
     private session: AxiosInstance;
     private globalAbortController: AbortController;
@@ -116,13 +112,6 @@ export class PalDefenderClient {
 
     private _pathPart(value: string): string {
         return encodeURIComponent(value);
-    }
-
-    private _serializeEntry(value: unknown): unknown {
-        if (value && typeof value === 'object' && 'to_dict' in value) {
-            return (value as Serializable).to_dict();
-        }
-        return value;
     }
 
     private _resolvePalId(id: string): string {
@@ -283,12 +272,12 @@ export class PalDefenderClient {
     /** POST Endpoints */
     async giveItems(
         id: string,
-        ...items: (keyof typeof ItemId | { ItemId: keyof typeof ItemId; Count: number } | (keyof typeof ItemId | { ItemId: keyof typeof ItemId; Count: number })[])[]
+        ...items: (keyof typeof ItemId | { ItemID: keyof typeof ItemId; Count: number } | (keyof typeof ItemId | { ItemID: keyof typeof ItemId; Count: number })[])[]
     ): Promise<PalActionResult> {
         const flattened = items.flat();
 
         const aggregated = flattened.reduce((acc, item) => {
-            const rawId = typeof item === 'string' ? item : item.ItemId;
+            const rawId = typeof item === 'string' ? item : item.ItemID;
             const count = typeof item === 'string' ? 1 : item.Count;
             const resolvedId = this._resolveItemId(rawId as string) || rawId;
 
@@ -362,17 +351,26 @@ export class PalDefenderClient {
         return this._request('POST', `/give/paleggs/${this._pathPart(id)}`, payload);
     }
 
-    async giveRecipeMaterials(id: string, product: keyof typeof ItemId | string, quantity: number = 1): Promise<PalActionResult> {
-        if (quantity <= 0) throw new Error("quantity must be a positive integer");
-        const prodId = (ItemId as any)[product] || product;
-        const materials = getRecipeMaterials(prodId as ItemId);
-        if (!materials) throw new Error(`No recipe found for product ${product}`);
-        const items: { ItemId: keyof typeof ItemId, Count: number }[] = [];
-        for (const [matId, count] of Object.entries(materials)) {
-            items.push({ ItemId: this._resolveItemId(matId) as keyof typeof ItemId, Count: count as number });
-        }
-        return this.giveItems(id, items);
+    async giveRecipeMaterials(
+    id: string, 
+    product: keyof typeof ItemId, 
+    quantity: number = 1
+): Promise<PalActionResult> {
+    if (quantity <= 0) throw new Error("quantity must be a positive integer");
+    const prodId = (ItemId as any)[product] || product;
+    const materials = getRecipeMaterials(prodId as any);
+    if (!materials) {
+        throw new Error(`No recipe found for item: ${product}`);
     }
+    const items: { ItemID: keyof typeof ItemId, Count: number }[] = [];
+    for (const [matId, count] of Object.entries(materials)) {
+        items.push({ 
+            ItemID: this._resolveItemId(matId) as keyof typeof ItemId, 
+            Count: (count as number) * quantity 
+        });
+    }
+    return this.giveItems(id, ...items);
+}
 
     /**
      * Progression: Grant EXP, Lifmunks, or Tech Points.
@@ -381,18 +379,18 @@ export class PalDefenderClient {
     async giveProgression(
         id: string,
         options: {
-            exp?: number;
-            lifmunks?: number;
-            technologyPoints?: number;
-            ancientTechnologyPoints?: number;
+            EXP?: number;
+            Lifmunks?: number;
+            TechnologyPoints?: number;
+            AncientTechnologyPoints?: number;
         } = {}
     ): Promise<PalActionResult> {
         // Map the user-friendly keys to the API's expected payload format
         const payload = {
-            EXP: options.exp,
-            Lifmunks: options.lifmunks,
-            TechnologyPoints: options.technologyPoints,
-            AncientTechnologyPoints: options.ancientTechnologyPoints
+            EXP: options.EXP,
+            Lifmunks: options.Lifmunks,
+            TechnologyPoints: options.TechnologyPoints,
+            AncientTechnologyPoints: options.AncientTechnologyPoints
         };
 
         // Filter out undefined values so we only send what is being changed
