@@ -1,6 +1,6 @@
 {
   "name": "paldefender-rest-client",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "TypeScript API Wrapper for the PalDefender REST API.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
